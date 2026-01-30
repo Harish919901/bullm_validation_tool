@@ -18,8 +18,9 @@ services:
     healthCheckPath: /health
 
   # Frontend - React Static Site
-  - type: static
+  - type: web
     name: qw-validation-ui
+    env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
