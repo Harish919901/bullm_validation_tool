@@ -169,6 +169,43 @@ The tool generates:
 
 ---
 
+## Deployment (Render)
+
+This project includes a `render.yaml` Blueprint for easy deployment to [Render](https://render.com).
+
+### One-Click Deploy
+
+1. Push code to GitHub
+2. Go to [Render Dashboard](https://dashboard.render.com)
+3. Click **"New +"** → **"Blueprint"**
+4. Connect your GitHub repository
+5. Render will auto-detect `render.yaml` and create both services
+
+### Manual Deploy
+
+**Backend (Web Service):**
+1. Create new **Web Service** on Render
+2. Connect GitHub repo, set **Root Directory**: `backend`
+3. **Build Command**: `pip install -r requirements.txt`
+4. **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. Add env var: `ALLOWED_ORIGINS` = `https://your-frontend-url.onrender.com`
+
+**Frontend (Static Site):**
+1. Create new **Static Site** on Render
+2. Connect GitHub repo, set **Root Directory**: `frontend`
+3. **Build Command**: `npm install && npm run build`
+4. **Publish Directory**: `dist`
+5. Add env var: `VITE_API_URL` = `https://your-backend-url.onrender.com/api`
+
+### Environment Variables
+
+| Service | Variable | Description |
+|---------|----------|-------------|
+| Backend | `ALLOWED_ORIGINS` | Frontend URL for CORS (comma-separated) |
+| Frontend | `VITE_API_URL` | Backend API URL with `/api` suffix |
+
+---
+
 ## License
 
 MIT License
