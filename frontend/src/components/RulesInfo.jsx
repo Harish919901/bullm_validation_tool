@@ -126,6 +126,12 @@ const bomRules = [
     description:
       'Validates that part count matches between Missing Notes Uncosted Parts and CBOM Is Data = False',
   },
+  {
+    num: 'Rule 19',
+    title: 'CPN count is not matching',
+    description:
+      'CPN count is not matching with total BOM parts',
+  },
 ]
 
 function RulesInfo({ validatorType }) {

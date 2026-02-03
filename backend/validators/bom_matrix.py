@@ -1861,6 +1861,9 @@ class ExcelValidator:
         rule18_results = self.validate_rule18_uncosted_parts_count()
         all_results.extend(rule18_results)
 
+        rule19_results = self.validate_rule19_bom_matrix_validation()
+        all_results.extend(rule19_results)
+
         self.results = all_results
         return all_results
 
@@ -2089,6 +2092,174 @@ class ExcelValidator:
             )
 
         results.append(result)
+        return results
+
+    def validate_rule19_bom_matrix_validation(self) -> List[ValidationResult]:
+        """
+        Rule 19: CPN count is not matching - Validate CPN count matching between Lead Time (FG Wise) and CBOM VL sheets
+
+        Logic:
+        1. In Lead Time (FG Wise), find "LT in weeks - #" headers (extract FG part numbers)
+        2. Find "Grand Total" row for each FG, get count from next column
+        3. Use last 7.0 CBOM VL-{X} sheet (highest X)
+        4. Find ALL "FG part number" headers in Column A (scan entire sheet)
+        5. For each FG, filter rows where Column A = FG part number
+        6. Count UNIQUE "Part Number" (Column C) values
+        7. Compare: Grand Total count == Unique CBOM count
+
+        Returns individual result for EACH FG part
+
+        Returns:
+            List of ValidationResult objects (one per FG part)
+        """
+        results = []
+
+        # Step 1: Check if Lead Time (FG Wise) exists
+        if "Lead Time (FG Wise)" not in self.workbook.sheetnames:
+            result = ValidationResult(
+                rule_name="Rule 19: CPN count is not matching",
+                sheet_name="Lead Time (FG Wise)",
+                status="FAIL",
+                expected="Sheet 'Lead Time (FG Wise)' should exist",
+                actual="Sheet not found"
+            )
+            results.append(result)
+            return results
+
+        lt_sheet = self.workbook["Lead Time (FG Wise)"]
+
+        # Step 2: Find all "LT in weeks - #" headers and their Grand Total counts
+        fg_parts = []
+        for col_idx in range(1, 50):
+            header_cell = lt_sheet.cell(row=1, column=col_idx)
+            if header_cell.value and isinstance(header_cell.value, str) and "LT in weeks -" in header_cell.value:
+                fg_part = header_cell.value.replace("LT in weeks -", "").strip()
+
+                # Next column should be "Count of Part Number"
+                count_col = col_idx + 1
+
+                # Find "Grand Total" row in this FG's column
+                grand_total_value = None
+                for row_idx in range(2, 100):
+                    cell_value = lt_sheet.cell(row=row_idx, column=col_idx).value
+                    if cell_value and isinstance(cell_value, str) and "Grand Total" in cell_value:
+                        grand_total_value = lt_sheet.cell(row=row_idx, column=count_col).value
+                        break
+
+                if grand_total_value is not None:
+                    fg_parts.append((fg_part, grand_total_value))
+
+        if not fg_parts:
+            result = ValidationResult(
+                rule_name="Rule 19: CPN count is not matching",
+                sheet_name="Lead Time (FG Wise)",
+                status="FAIL",
+                expected="At least one 'LT in weeks - #' header with Grand Total",
+                actual="No FG parts with Grand Total found"
+            )
+            results.append(result)
+            return results
+
+        # Step 3: Find last CBOM VL-{X} sheet
+        cbom_pattern = r'^7\.0 CBOM VL-(\d+)$'
+        cbom_sheets = []
+        for sheet_name in self.workbook.sheetnames:
+            match = re.match(cbom_pattern, sheet_name)
+            if match:
+                sheet_num = int(match.group(1))
+                cbom_sheets.append((sheet_num, sheet_name))
+
+        if not cbom_sheets:
+            result = ValidationResult(
+                rule_name="Rule 19: CPN count is not matching",
+                sheet_name="N/A",
+                status="FAIL",
+                expected="At least one '7.0 CBOM VL-{X}' sheet should exist",
+                actual="No CBOM VL sheets found"
+            )
+            results.append(result)
+            return results
+
+        # Get last CBOM sheet (highest X)
+        cbom_sheets.sort()
+        last_cbom_num, last_cbom_name = cbom_sheets[-1]
+        cbom_sheet = self.workbook[last_cbom_name]
+
+        # Step 4: Find ALL "FG part number" sections in Column A (scan entire sheet up to 2000 rows)
+        fg_sections = []
+        for row_idx in range(1, 2000):
+            cell = cbom_sheet.cell(row=row_idx, column=1)
+            if cell.value and isinstance(cell.value, str) and cell.value == "FG part number":
+                fg_sections.append(row_idx)
+
+        if not fg_sections:
+            result = ValidationResult(
+                rule_name="Rule 19: CPN count is not matching",
+                sheet_name=last_cbom_name,
+                status="FAIL",
+                expected="'FG part number' headers in Column A",
+                actual="No 'FG part number' headers found"
+            )
+            results.append(result)
+            return results
+
+        # Step 5: Validate EACH FG part individually and create separate result for each
+        for fg_part, expected_count in fg_parts:
+            unique_parts = set()
+
+            # Count unique parts across ALL sections
+            for section_row in fg_sections:
+                row_idx = section_row + 1
+
+                # Scan until empty row (with large limit per section)
+                while row_idx < section_row + 1000:
+                    fg_value = cbom_sheet.cell(row=row_idx, column=1).value  # Column A - FG part number
+                    part_number = cbom_sheet.cell(row=row_idx, column=3).value  # Column C - Part Number
+
+                    # Stop at empty row
+                    if fg_value is None or str(fg_value).strip() == "":
+                        break
+
+                    # Filter by FG part number and collect unique part numbers
+                    if str(fg_value).strip() == fg_part and part_number:
+                        unique_parts.add(str(part_number).strip())
+
+                    row_idx += 1
+
+            actual_count = len(unique_parts)
+
+            # Create individual result for this FG part
+            if expected_count == actual_count:
+                result = ValidationResult(
+                    rule_name="Rule 19: CPN count is not matching",
+                    sheet_name="Lead Time (FG Wise)",
+                    status="PASS",
+                    expected=f"Count {expected_count} for FG {fg_part}",
+                    actual=f"{fg_part}: {expected_count} == {actual_count} PASS",
+                    location=f"Lead Time vs {last_cbom_name}"
+                )
+            else:
+                if actual_count == 0:
+                    result = ValidationResult(
+                        rule_name="Rule 19: CPN count is not matching",
+                        sheet_name="Lead Time (FG Wise)",
+                        status="FAIL",
+                        expected=f"Count {expected_count} for FG {fg_part}",
+                        actual=f"{fg_part}: Not found in CBOM",
+                        location=f"Lead Time vs {last_cbom_name}"
+                    )
+                else:
+                    result = ValidationResult(
+                        rule_name="Rule 19: CPN count is not matching",
+                        sheet_name="Lead Time (FG Wise)",
+                        status="FAIL",
+                        expected=f"Count {expected_count} for FG {fg_part}",
+                        actual=f"{fg_part}: {expected_count} != {actual_count} FAIL",
+                        location=f"Lead Time vs {last_cbom_name}"
+                    )
+
+            results.append(result)
+
         return results
 
     def generate_report(self, output_format: str = "console") -> str:

@@ -7,7 +7,7 @@ function Dashboard({ results, validatorType, onViewAllResults }) {
   const total = results.length
   const passed = results.filter((r) => r.status === 'PASS').length
   const failed = total - passed
-  const defaultRules = validatorType === 'QUOTE_WIN' ? 4 : 18
+  const defaultRules = validatorType === 'QUOTE_WIN' ? 4 : 19
   const rulesCount = results.length > 0
     ? new Set(results.map((r) => r.rule_name)).size
     : defaultRules

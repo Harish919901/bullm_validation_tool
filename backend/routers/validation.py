@@ -201,7 +201,7 @@ def run_quote_win_validation(file_path: str) -> list[ValidationResult]:
 
 
 def run_bom_validation(file_path: str) -> list[ValidationResult]:
-    """Run BOM Matrix validation with all 18 rules"""
+    """Run BOM Matrix validation with all 19 rules"""
     validator = BOMValidator(file_path)
     bom_results = validator.run_all_validations()
 

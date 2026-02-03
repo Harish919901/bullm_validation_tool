@@ -4,7 +4,7 @@ A comprehensive validation tool for **Quote Win** and **BOM Matrix** Excel files
 
 ## Features
 
-- **Two Validator Types**: Quote Win (4 Rules) and BOM Matrix (18 Rules)
+- **Two Validator Types**: Quote Win (4 Rules) and BOM Matrix (19 Rules)
 - **Modern Web UI**: React + Vite + Tailwind CSS
 - **REST API Backend**: FastAPI with automatic OpenAPI documentation
 - **Visual Dashboard**: Charts, statistics, and detailed results
@@ -95,7 +95,7 @@ Validates Quote Win Excel files for CAM with the following checks:
 
 ---
 
-## BOM Matrix Validation (18 Rules)
+## BOM Matrix Validation (19 Rules)
 
 Validates BOM Matrix Excel files with comprehensive checks across multiple sheets:
 
@@ -119,6 +119,7 @@ Validates BOM Matrix Excel files with comprehensive checks across multiple sheet
 | **Rule 16** | Serial Number Standardization | Validates serial numbers in Missing Notes are sequential (1, 2, 3...) |
 | **Rule 17** | Price Validity Date Format | Validates Effective Date column uses date format (not weeks) |
 | **Rule 18** | Uncosted Parts Count | Validates part count matches between Missing Notes and CBOM |
+| **Rule 19** | CPN count is not matching | CPN count is not matching with total BOM parts |
 
 ### BOM Matrix Sheets Validated
 

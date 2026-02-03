@@ -66,7 +66,7 @@ function Header({
                 onChange={(e) => onValidatorTypeChange(e.target.value)}
                 className="w-4 h-4 text-primary focus:ring-primary"
               />
-              <span className="text-sm text-text-primary">BOM Matrix (18 Rules)</span>
+              <span className="text-sm text-text-primary">BOM Matrix (19 Rules)</span>
             </label>
           </div>
 
@@ -93,15 +93,6 @@ function Header({
             Select File
           </button>
 
-          {validatorType === 'QUOTE_WIN' && results.length > 0 && (
-            <button
-              onClick={onSaveFile}
-              disabled={loading || !sessionId}
-              className="px-6 py-3 bg-accent-pink hover:bg-pink-300 text-text-primary font-semibold rounded-lg transition-all-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save File
-            </button>
-          )}
         </div>
       </div>
 
